@@ -160,7 +160,7 @@ func Discover(ip string) (dns []net.IP, err error) {
 
 	buf := make([]byte, MaxDhcpv4MessageSize)
 	_ = pc.SetDeadline(time.Now().Add(3 * time.Second))
-	n, rAddr2, err := pc.ReadFrom(buf[:])
+	n, _, err := pc.ReadFrom(buf[:])
 	pc.Close()
 	if err != nil {
 		return nil, err
