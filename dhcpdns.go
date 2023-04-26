@@ -8,7 +8,7 @@ package dhcpdns
 import (
 	"crypto/rand"
 	"errors"
-	"log"
+	//"log"
 	"net"
 	"runtime"
 	"time"
@@ -117,7 +117,7 @@ func Discover(ip string) (dns []net.IP, err error) {
 	if err != nil {
 		return nil, err
 	}
-	log.Printf("Receiving addr Zone: %v", ipAddr.Zone)
+	//log.Printf("Receiving addr Zone: %v", ipAddr.Zone)
 
 	// Windows (WSL2) can't choose the right IP.
 	pc, err := ReuseListenPacket("udp4", ip+":68")
@@ -156,7 +156,7 @@ func Discover(ip string) (dns []net.IP, err error) {
 		}
 	}
 
-	log.Printf("Receiving addr: %v", pc.LocalAddr())
+	//log.Printf("Receiving addr: %v", pc.LocalAddr())
 
 	buf := make([]byte, MaxDhcpv4MessageSize)
 	_ = pc.SetDeadline(time.Now().Add(3 * time.Second))
@@ -165,7 +165,7 @@ func Discover(ip string) (dns []net.IP, err error) {
 	if err != nil {
 		return nil, err
 	}
-	log.Printf("Received from: %v", rAddr2)
+	//log.Printf("Received from: %v", rAddr2)
 
 	dns, err = GetDNSFromOffer(buf[:n])
 
@@ -296,7 +296,7 @@ func InformationRequest(ip string) (dns []net.IP, err error) {
 		return nil, err
 	}
 
-	log.Printf("Receiving addr: %v", pc.LocalAddr())
+	//log.Printf("Receiving addr: %v", pc.LocalAddr())
 
 	// new transaction id
 	_, _ = rand.Read(informationRequestMsg[1:4])
@@ -333,7 +333,7 @@ func detect(raddr string, fn func(string) ([]net.IP, error)) ([]net.IP, error) {
 		return nil, err
 	}
 
-	log.Printf("Active local IP: %v", ip)
+	//log.Printf("Active local IP: %v", ip)
 
 	return fn(ip)
 }
