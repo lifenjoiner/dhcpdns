@@ -3,7 +3,7 @@ It helps programs to use the upstream DNS easily when your network changed.
 
 ## Usage and Demo
 
-[cli](./cli)
+[cli](./cli) detects the DHCPv6/DHCPv4 DNS every 30s.
 ```
 go build cli
 cli
