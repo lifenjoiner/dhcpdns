@@ -1,0 +1,33 @@
+name: Native Build and Test
+
+on: [push, pull_request]
+
+jobs:
+  build:
+    name: dhcpdns-${{matrix.os}}
+    runs-on: ${{matrix.os}} # run native test
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Build
+      run: |
+        cd cli
+        go build -ldflags="all=-s -w" -trimpath
+
+    - name: Test Windows
+      if: runner.os == 'Windows'
+      run: ./cli/cli -once
+
+    - name: Test Non-Windows
+      if: runner.os != 'Windows'
+      run: sudo ./cli/cli -once
+
+    - name: Upload
+      uses: actions/upload-artifact@v3
+      with:
+        name: dhcpdns-${{github.head_ref || github.ref_name}}-${{matrix.os}}
+        path: cli/cli*
