@@ -7,6 +7,7 @@ call :Build windows amd64
 call :Build linux amd64
 call :Build darwin amd64
 call :Build freebsd amd64
+call :Build solaris amd64
 ::-code-::
 
 :Exit

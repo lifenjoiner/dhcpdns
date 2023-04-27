@@ -142,6 +142,8 @@ func Discover(ip string) (dns []net.IP, err error) {
 	}
 
 	// (*nix) may have a deamon binding the local IPPort and the gateway IPPort.
+	// If so and the server replies with a broadcast to the local IPPort, rather than IPv4bcast,
+	// it may not be received on some OS.
 	// Android needs it.
 	if ipAddr.Zone != "" {
 		pc.Close()
