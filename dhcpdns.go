@@ -149,11 +149,6 @@ func Discover(ip string) (dns []net.IP, err error) {
 		if err != nil {
 			return nil, err
 		}
-		err = BindToDevice(pc, ipAddr.Zone)
-		if err != nil {
-			pc.Close()
-			return nil, err
-		}
 	}
 
 	//log.Printf("Receiving addr: %v", pc.LocalAddr())

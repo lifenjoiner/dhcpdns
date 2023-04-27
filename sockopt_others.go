@@ -9,7 +9,6 @@ package dhcpdns
 
 import (
 	"context"
-	"errors"
 	"net"
 	"syscall"
 )
@@ -23,20 +22,4 @@ func ReuseListenPacket(network, address string) (net.PacketConn, error) {
 		},
 	}
 	return lc.ListenPacket(context.Background(), network, address)
-}
-
-func BindToDevice(pc net.PacketConn, device string) error {
-	uc, ok := pc.(*net.UDPConn)
-	if !ok {
-		return errors.New("not UDPConn")
-	}
-
-	rc, err := uc.SyscallConn()
-	if err != nil {
-		return err
-	}
-
-	return rc.Control(func(fd uintptr) {
-		_ = syscall.BindToDevice(int(fd), device)
-	})
 }
