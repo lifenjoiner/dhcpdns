@@ -6,9 +6,9 @@
 package main
 
 import (
+	"flag"
 	"log"
 	"net"
-	"os"
 	"time"
 
 	"github.com/lifenjoiner/dhcpdns"
@@ -27,8 +27,12 @@ func showResult(dns []net.IP, err error) {
 
 func main() {
 	var addr string
+	var n int
 
-	for {
+	flag.IntVar(&n, "n", -1, "Detecting rounds")
+	flag.Parse()
+
+	for ; n != 0; n-- {
 		addr = "[2001:4860:4860::8888]:80"
 		log.Printf("Targeting: %v", addr)
 		showResult(dhcpdns.Detect6(addr))
@@ -37,7 +41,7 @@ func main() {
 		log.Printf("Targeting: %v", addr)
 		showResult(dhcpdns.Detect4(addr))
 
-		if len(os.Args) > 1 {
+		if n == 1 {
 			break
 		}
 
