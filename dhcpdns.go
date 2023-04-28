@@ -120,7 +120,7 @@ func Discover(ip string) (dns []net.IP, err error) {
 	//log.Printf("Receiving addr Zone: %v", ipAddr.Zone)
 
 	// Windows (WSL2) can't choose the right IP.
-	pc, err := ReuseListenPacket("udp4", ip+":68")
+	pc, err := reuseListenPacket("udp4", ip+":68")
 	if err != nil {
 		return nil, err
 	}
@@ -147,7 +147,7 @@ func Discover(ip string) (dns []net.IP, err error) {
 	// Android needs it.
 	if ipAddr.Zone != "" {
 		pc.Close()
-		pc, err = ReuseListenPacket("udp4", ":68")
+		pc, err = reuseListenPacket("udp4", ":68")
 		if err != nil {
 			return nil, err
 		}
@@ -288,7 +288,7 @@ func InformationRequest(ip string) (dns []net.IP, err error) {
 		return nil, err
 	}
 
-	pc, err := ReuseListenPacket("udp6", "["+ipAddr.String()+"]:546")
+	pc, err := reuseListenPacket("udp6", "["+ipAddr.String()+"]:546")
 	if err != nil {
 		return nil, err
 	}

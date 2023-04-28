@@ -16,6 +16,6 @@ import (
 // `SO_REUSEADDR` doesn't really work for this on Windows, if `DHCP Client` service occupies the port!
 // https://learn.microsoft.com/en-us/windows/win32/winsock/using-so-reuseaddr-and-so-exclusiveaddruse
 // On Windows, the 1st bind receives the reply data.
-func ReuseListenPacket(network, address string) (net.PacketConn, error) {
+func reuseListenPacket(network, address string) (net.PacketConn, error) {
 	return net.ListenPacket(network, address)
 }

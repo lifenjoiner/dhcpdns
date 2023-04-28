@@ -15,7 +15,7 @@ import (
 
 const SO_REUSEPORT = 0xf
 
-func ReuseListenPacket(network, address string) (net.PacketConn, error) {
+func reuseListenPacket(network, address string) (net.PacketConn, error) {
 	lc := net.ListenConfig{
 		Control: func(network, address string, c syscall.RawConn) error {
 			return c.Control(func(fd uintptr) {

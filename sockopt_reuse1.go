@@ -14,7 +14,7 @@ import (
 )
 
 // No SO_REUSEPORT implemented. Doesn't work for SO_EXCLBIND on Solaris.
-func ReuseListenPacket(network, address string) (net.PacketConn, error) {
+func reuseListenPacket(network, address string) (net.PacketConn, error) {
 	lc := net.ListenConfig{
 		Control: func(network, address string, c syscall.RawConn) error {
 			return c.Control(func(fd uintptr) {
