@@ -76,7 +76,7 @@ func GetDNSFromReply4(msg []byte, tid []byte) (ip []net.IP, err error) {
 }
 
 // Send DHCPINFORM message and return the DNS.
-func DhcpInform(ip string) (dns []net.IP, err error) {
+func GetDNSByIPv4(ip string) (dns []net.IP, err error) {
 	ipAddr, ifi, err := getOutboundParams(ip)
 	if err != nil {
 		return nil, err
@@ -290,7 +290,7 @@ func GetDNSFromReply6(msg []byte, tid []byte) (ip []net.IP, err error) {
 }
 
 // Send DHCPv6 INFORMATION-REQUEST message and return the DNS.
-func InformationRequest(ip string) (dns []net.IP, err error) {
+func GetDNSByIPv6(ip string) (dns []net.IP, err error) {
 	ipAddr, _, err := getOutboundParams(ip)
 	if err != nil {
 		return nil, err
@@ -365,11 +365,11 @@ func detect(raddr string, fn func(string) ([]net.IP, error)) ([]net.IP, error) {
 // Detect the IPv4 DNS from the active interface which is adopted
 // to connect to the provided IpPort address.
 func Detect4(raddr string) ([]net.IP, error) {
-	return detect(raddr, DhcpInform)
+	return detect(raddr, GetDNSByIPv4)
 }
 
 // Detect the IPv6 DNS from the active interface which is adopted
 // to connect to the provided IpPort address.
 func Detect6(raddr string) ([]net.IP, error) {
-	return detect(raddr, InformationRequest)
+	return detect(raddr, GetDNSByIPv6)
 }
