@@ -71,6 +71,7 @@ func GetDNSFromReply4(msg []byte, tid []byte) (ip []net.IP, err error) {
 
 	if len(ip) == 0 {
 		err = errors.New("no DNS found")
+		//log.Printf("%x", msg)
 	}
 	return
 }
@@ -99,7 +100,7 @@ func GetDNSByIPv4(ip string) (dns []net.IP, err error) {
 		0x01,                   // hardware type: Ethernet
 		0x06,                   // hardware address length: Ethernet
 		0x00,                   // hops
-		0x18, 0x22, 0xae, 0x2d, // transaction id
+		0x48, 0x59, 0x58, 0x27, // transaction id
 		0x00, 0x00, // seconds elasped
 		0x80, 0x00, // flags: BROADCAST. Unicast may not be received.
 		0x00, 0x00, 0x00, 0x00, // client ip: ciaddr
@@ -129,6 +130,7 @@ func GetDNSByIPv4(ip string) (dns []net.IP, err error) {
 		0x35, 0x01, 0x03, // DHCPREQUEST. DHCPDISCOVER may cause the server to release the OFFER.
 		0x32, 0x04, 0xc0, 0xa8, 0x01, 0x04, // Requested IP address for `INIT-REBOOT`
 		0x37, 0x01, 0x06, // Parameter Request List: DNS
+		0x3d, 0x07, 0x01, 0x06, 0x05, 0x04, 0x03, 0x02, 0x01, // Client Identifier
 		0xff, // END
 		// padding: min length of 300 bytes per RFC951
 		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
@@ -144,6 +146,14 @@ func GetDNSByIPv4(ip string) (dns []net.IP, err error) {
 	copy(dhcpinformMsg[28:28+16], ifi.HardwareAddr)
 	// Requested IP address
 	copy(dhcpinformMsg[245:245+4], ipAddr.IP.To4())
+	// The DHCP server of VMware NAT mode requires Client identifier.
+	m := len(ifi.HardwareAddr)
+	//log.Printf("MAC[%v]: %v", m, ifi.HardwareAddr)
+	if m > 0 {
+		copy(dhcpinformMsg[255:255+m], ifi.HardwareAddr)
+		dhcpinformMsg[253] = byte(m&0xff) + 1
+		dhcpinformMsg[255+m] = 0xff
+	}
 
 	rAddr := &net.UDPAddr{IP: net.IPv4bcast, Port: 67}
 	_ = pc.SetDeadline(time.Now().Add(3 * time.Second))
@@ -308,7 +318,7 @@ func GetDNSByIPv6(ip string) (dns []net.IP, err error) {
 	// https://datatracker.ietf.org/doc/html/rfc8415#section-8
 	informationRequestMsg := []byte{
 		0x0b,             // message type
-		0x10, 0x08, 0x74, // transaction id
+		0x48, 0x59, 0x58, // transaction id
 		// Options
 		// Elapsed Time Option: https://datatracker.ietf.org/doc/html/rfc8415#section-21.9
 		0x00, 0x08, 0x00, 0x02, 0x00, 0x00,
