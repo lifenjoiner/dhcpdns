@@ -76,7 +76,7 @@ func GetDNSFromReply4(msg []byte, tid []byte) (ip []net.IP, err error) {
 	return
 }
 
-// Send DHCPINFORM message and return the DNS.
+// Send DHCP message and return the DNS.
 func GetDNSByIPv4(ip string) (dns []net.IP, err error) {
 	ipAddr, ifi, err := getOutboundParams(ip)
 	if err != nil {
@@ -95,7 +95,7 @@ func GetDNSByIPv4(ip string) (dns []net.IP, err error) {
 	// https://en.wikipedia.org/wiki/Dynamic_Host_Configuration_Protocol
 	// https://datatracker.ietf.org/doc/html/rfc2132#section-9.6
 	// INIT-REBOOT: https://datatracker.ietf.org/doc/html/rfc2131#section-4.3.2
-	dhcpinformMsg := []byte{
+	dhcpMsg := []byte{
 		0x01,                   // message type
 		0x01,                   // hardware type: Ethernet
 		0x06,                   // hardware address length: Ethernet
@@ -139,25 +139,25 @@ func GetDNSByIPv4(ip string) (dns []net.IP, err error) {
 	}
 
 	// new transaction id
-	tid := dhcpinformMsg[4:8]
+	tid := dhcpMsg[4:8]
 	_, _ = rand.Read(tid)
 
 	// MAC. On devices (Android) with both IPv6 and IPv6 available, MAC would be nil.
-	copy(dhcpinformMsg[28:28+16], ifi.HardwareAddr)
+	copy(dhcpMsg[28:28+16], ifi.HardwareAddr)
 	// Requested IP address
-	copy(dhcpinformMsg[245:245+4], ipAddr.IP.To4())
+	copy(dhcpMsg[245:245+4], ipAddr.IP.To4())
 	// The DHCP server of VMware NAT mode requires Client identifier.
 	m := len(ifi.HardwareAddr)
 	//log.Printf("MAC[%v]: %v", m, ifi.HardwareAddr)
 	if m > 0 {
-		copy(dhcpinformMsg[255:255+m], ifi.HardwareAddr)
-		dhcpinformMsg[253] = byte(m&0xff) + 1
-		dhcpinformMsg[255+m] = 0xff
+		copy(dhcpMsg[255:255+m], ifi.HardwareAddr)
+		dhcpMsg[253] = byte(m&0xff) + 1
+		dhcpMsg[255+m] = 0xff
 	}
 
 	rAddr := &net.UDPAddr{IP: net.IPv4bcast, Port: 67}
 	_ = pc.SetDeadline(time.Now().Add(3 * time.Second))
-	_, err = pc.WriteTo(dhcpinformMsg, rAddr)
+	_, err = pc.WriteTo(dhcpMsg, rAddr)
 	if err != nil {
 		// defer doesn't work on reassignment
 		pc.Close()
@@ -316,7 +316,7 @@ func GetDNSByIPv6(ip string) (dns []net.IP, err error) {
 	// https://datatracker.ietf.org/doc/html/rfc8415#section-5.1
 	// https://datatracker.ietf.org/doc/html/rfc8415#section-18.2.6
 	// https://datatracker.ietf.org/doc/html/rfc8415#section-8
-	informationRequestMsg := []byte{
+	dhcpv6Msg := []byte{
 		0x0b,             // message type
 		0x48, 0x59, 0x58, // transaction id
 		// Options
@@ -329,12 +329,12 @@ func GetDNSByIPv6(ip string) (dns []net.IP, err error) {
 	}
 
 	// new transaction id
-	tid := informationRequestMsg[1:4]
+	tid := dhcpv6Msg[1:4]
 	_, _ = rand.Read(tid)
 
 	rAddr := &net.UDPAddr{IP: net.IP{0xff, 0x02, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0x01, 0, 0x02}, Port: 547}
 	_ = pc.SetDeadline(time.Now().Add(3 * time.Second))
-	_, err = pc.WriteTo(informationRequestMsg, rAddr)
+	_, err = pc.WriteTo(dhcpv6Msg, rAddr)
 	if err != nil {
 		return nil, err
 	}
