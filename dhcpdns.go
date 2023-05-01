@@ -90,9 +90,10 @@ func GetDNSByIPv4(ip string) (dns []net.IP, err error) {
 	}
 
 	// Minimal DHCP message
+	// We prefer to be reached by a broadcast than unicast relpy, in case of there is the OS DHCP deamon binding.
 	// https://en.wikipedia.org/wiki/Dynamic_Host_Configuration_Protocol
 	// https://datatracker.ietf.org/doc/html/rfc2132#section-9.6
-	// https://datatracker.ietf.org/doc/html/rfc2131#section-4.4.3
+	// INIT-REBOOT: https://datatracker.ietf.org/doc/html/rfc2131#section-4.3.2
 	dhcpinformMsg := []byte{
 		0x01,                   // message type
 		0x01,                   // hardware type: Ethernet
@@ -101,10 +102,10 @@ func GetDNSByIPv4(ip string) (dns []net.IP, err error) {
 		0x18, 0x22, 0xae, 0x2d, // transaction id
 		0x00, 0x00, // seconds elasped
 		0x80, 0x00, // flags: BROADCAST. Unicast may not be received.
-		0x00, 0x00, 0x00, 0x00, // client ip
-		0x00, 0x00, 0x00, 0x00, // your ip
-		0x00, 0x00, 0x00, 0x00, // server ip
-		0x00, 0x00, 0x00, 0x00, // relay ip
+		0x00, 0x00, 0x00, 0x00, // client ip: ciaddr
+		0x00, 0x00, 0x00, 0x00, // your ip: yiaddr
+		0x00, 0x00, 0x00, 0x00, // server ip: siaddr
+		0x00, 0x00, 0x00, 0x00, // relay ip: giaddr
 		// client MAC: https://gitlab.com/wireshark/wireshark/-/raw/master/manuf
 		0x06, 0x05, 0x04, 0x03, 0x02, 0x01,
 		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // client hardware address padding
@@ -123,30 +124,26 @@ func GetDNSByIPv4(ip string) (dns []net.IP, err error) {
 		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 		// magic cookie: DHCP
-		0x63, 0x82, 0x53, 0x63,
+		0x63, 0x82, 0x53, 0x63, // 240B
 		// Options
-		0x35, 0x01, 0x08, // DHCPINFORM. DHCPDISCOVER may cause the server to release the OFFER.
+		0x35, 0x01, 0x03, // DHCPREQUEST. DHCPDISCOVER may cause the server to release the OFFER.
+		0x32, 0x04, 0xc0, 0xa8, 0x01, 0x04, // Requested IP address for `INIT-REBOOT`
 		0x37, 0x01, 0x06, // Parameter Request List: DNS
-		0xff, // END: 247B
+		0xff, // END
 		// padding: min length of 300 bytes per RFC951
 		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-		0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 	}
 
 	// new transaction id
 	tid := dhcpinformMsg[4:8]
 	_, _ = rand.Read(tid)
 
-	// We prefer to be reached by a broadcast than unicast relpy, in case of there is the OS DHCP deamon binding.
-	// But on Android with IPv6 available, MAC is unavailable, then can't receive the broadcast.
-	if len(ifi.HardwareAddr) == 0 {
-		copy(dhcpinformMsg[12:12+4], ipAddr.IP.To4())
-	} else {
-		// Ubuntu requires MAC
-		copy(dhcpinformMsg[28:28+16], ifi.HardwareAddr)
-	}
+	// MAC. On devices (Android) with both IPv6 and IPv6 available, MAC would be nil.
+	copy(dhcpinformMsg[28:28+16], ifi.HardwareAddr)
+	// Requested IP address
+	copy(dhcpinformMsg[245:245+4], ipAddr.IP.To4())
 
 	rAddr := &net.UDPAddr{IP: net.IPv4bcast, Port: 67}
 	_ = pc.SetDeadline(time.Now().Add(3 * time.Second))
@@ -157,10 +154,10 @@ func GetDNSByIPv4(ip string) (dns []net.IP, err error) {
 		return nil, err
 	}
 
+	// Prefer broadcast:
 	// (*nix) may have a deamon binding the local IPPort and the gateway IPPort.
 	// If so and the server replies with a broadcast to the local IPPort, rather than IPv4bcast,
 	// it may not be received on some OS.
-	// Android needs it.
 	if ipAddr.Zone != "" {
 		pc.Close()
 		pc, err = reuseListenPacket("udp4", ":68")
