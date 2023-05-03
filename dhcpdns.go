@@ -156,7 +156,7 @@ func GetDNSByIPv4(ip string) (dns []net.IP, err error) {
 	}
 
 	rAddr := &net.UDPAddr{IP: net.IPv4bcast, Port: 67}
-	_ = pc.SetDeadline(time.Now().Add(3 * time.Second))
+	_ = pc.SetDeadline(time.Now().Add(2 * time.Second))
 	_, err = pc.WriteTo(dhcpMsg, rAddr)
 	if err != nil {
 		// defer doesn't work on reassignment
@@ -179,7 +179,7 @@ func GetDNSByIPv4(ip string) (dns []net.IP, err error) {
 	//log.Printf("Receiving addr: %v", pc.LocalAddr())
 
 	buf := make([]byte, MaxDhcpv4MessageSize)
-	_ = pc.SetDeadline(time.Now().Add(3 * time.Second))
+	_ = pc.SetDeadline(time.Now().Add(2 * time.Second))
 	n, _, err := pc.ReadFrom(buf[:])
 	pc.Close()
 	if err != nil {
@@ -332,14 +332,14 @@ func GetDNSByIPv6(ip string) (dns []net.IP, err error) {
 	_, _ = rand.Read(tid)
 
 	rAddr := &net.UDPAddr{IP: net.IP{0xff, 0x02, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0x01, 0, 0x02}, Port: 547}
-	_ = pc.SetDeadline(time.Now().Add(3 * time.Second))
+	_ = pc.SetDeadline(time.Now().Add(2 * time.Second))
 	_, err = pc.WriteTo(dhcpv6Msg, rAddr)
 	if err != nil {
 		return nil, err
 	}
 
 	buf := make([]byte, CommDhcpv6MessageSize)
-	_ = pc.SetDeadline(time.Now().Add(3 * time.Second))
+	_ = pc.SetDeadline(time.Now().Add(2 * time.Second))
 	n, _, err := pc.ReadFrom(buf[:])
 	pc.Close()
 	if err != nil {
