@@ -313,7 +313,6 @@ func GetDNSByIPv6(ip string) (dns []net.IP, err error) {
 	// Minimal INFORMATION-REQUEST message
 	// https://en.wikipedia.org/wiki/DHCPv6
 	// INFORMATION-REQUEST (11):
-	// https://datatracker.ietf.org/doc/html/rfc8415#section-5.1
 	// https://datatracker.ietf.org/doc/html/rfc8415#section-18.2.6
 	// https://datatracker.ietf.org/doc/html/rfc8415#section-8
 	dhcpv6Msg := []byte{
@@ -322,10 +321,10 @@ func GetDNSByIPv6(ip string) (dns []net.IP, err error) {
 		// Options
 		// Elapsed Time Option: https://datatracker.ietf.org/doc/html/rfc8415#section-21.9
 		0x00, 0x08, 0x00, 0x02, 0x00, 0x00,
-		// Client Identifier Option: https://datatracker.ietf.org/doc/html/rfc8415#section-16.2
+		// option request: INF_MAX_RT, Information Refresh Time, DNS
+		0x00, 0x06, 0x00, 0x06, 0x00, 0x53, 0x00, 0x20, 0x00, 0x17,
+		// Client Identifier Option, DUID-LL: https://datatracker.ietf.org/doc/html/rfc8415#section-21.2
 		0x00, 0x01, 0x00, 0x0a, 0x00, 0x03, 0x00, 0x01, 0x06, 0x05, 0x04, 0x03, 0x02, 0x01,
-		// option reques: DNS
-		0x00, 0x06, 0x00, 0x02, 0x00, 0x17,
 	}
 
 	// new transaction id
