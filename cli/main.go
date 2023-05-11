@@ -21,7 +21,7 @@ func showResult(d *dhcpdns.Detector, err error) {
 
 	log.Printf("Active local IP: %v", d.LastActiveIP)
 
-	for _, dnsi := range d.DNS {
+	for _, dnsi := range d.DNS() {
 		log.Printf("DHCP DNS: %v", dnsi.String())
 	}
 }

@@ -11,6 +11,7 @@ import (
 	//"log"
 	"net"
 	"runtime"
+	"sync"
 	"time"
 )
 
@@ -357,9 +358,10 @@ func GetDNSByIPv6(ip string) (dns []net.IP, err error) {
 }
 
 type Detector struct {
+	sync.RWMutex
 	RemoteIPPort string
 	LastActiveIP string
-	DNS          []net.IP
+	dns          []net.IP
 }
 
 // Detect the DNS from the active interface which is adopted to connect to the provided IPPort address.
@@ -391,8 +393,18 @@ func (d *Detector) Detect() error {
 		}
 		if err == nil {
 			d.LastActiveIP = ip
-			d.DNS = dns
+			d.Lock()
+			d.dns = dns
+			d.Unlock()
 		}
 	}
 	return err
+}
+
+// Get the detected DNS.
+func (d *Detector) DNS() []net.IP {
+	d.RLock()
+	dns := d.dns
+	d.RUnlock()
+	return dns
 }
