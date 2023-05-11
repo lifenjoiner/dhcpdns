@@ -160,7 +160,7 @@ func GetDNSByIPv4(ip string) (dns []net.IP, err error) {
 	_, err = pc.WriteTo(dhcpMsg, rAddr)
 	if err != nil {
 		// defer doesn't work on reassignment
-		pc.Close()
+		_ = pc.Close()
 		return nil, err
 	}
 
@@ -169,7 +169,7 @@ func GetDNSByIPv4(ip string) (dns []net.IP, err error) {
 	// If so and the server replies with a broadcast to the local IPPort, rather than IPv4bcast,
 	// it may not be received on some OS.
 	if ipAddr.Zone != "" {
-		pc.Close()
+		_ = pc.Close()
 		pc, err = reuseListenPacket("udp4", ":68")
 		if err != nil {
 			return nil, err
@@ -181,7 +181,7 @@ func GetDNSByIPv4(ip string) (dns []net.IP, err error) {
 	buf := make([]byte, MaxDhcpv4MessageSize)
 	_ = pc.SetDeadline(time.Now().Add(2 * time.Second))
 	n, _, err := pc.ReadFrom(buf[:])
-	pc.Close()
+	_ = pc.Close()
 	if err != nil {
 		return nil, err
 	}
@@ -342,7 +342,7 @@ func GetDNSByIPv6(ip string) (dns []net.IP, err error) {
 	buf := make([]byte, CommDhcpv6MessageSize)
 	_ = pc.SetDeadline(time.Now().Add(2 * time.Second))
 	n, _, err := pc.ReadFrom(buf[:])
-	pc.Close()
+	_ = pc.Close()
 	if err != nil {
 		return nil, err
 	}
