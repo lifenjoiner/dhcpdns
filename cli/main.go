@@ -16,10 +16,10 @@ import (
 func showResult(d *dhcpdns.Detector, err error) {
 	if err != nil {
 		log.Printf("error: %v", err)
-		return
+		log.Print("Keep the last good results")
+	} else {
+		log.Printf("Active local IP: %v", d.LastActiveIP)
 	}
-
-	log.Printf("Active local IP: %v", d.LastActiveIP)
 
 	for _, dnsi := range d.DNS() {
 		log.Printf("DHCP DNS: %v", dnsi.String())
