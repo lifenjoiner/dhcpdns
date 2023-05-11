@@ -303,6 +303,10 @@ func GetDNSByIPv6(ip string) (dns []net.IP, err error) {
 		return nil, err
 	}
 
+	if ipAddr.String() == ip {
+		return nil, errors.New("no valid IPv6")
+	}
+
 	pc, err := reuseListenPacket("udp6", "["+ipAddr.String()+"]:546")
 	if err != nil {
 		return nil, err
