@@ -44,13 +44,13 @@ func main() {
 			d6.LastActiveIP = ""
 		}
 
-		log.Printf("Targeting: %v", d6.RemoteIPPort)
-		err = d6.Detect()
-		showResult(d6, err)
-
 		log.Printf("Targeting: %v", d4.RemoteIPPort)
 		err = d4.Detect()
 		showResult(d4, err)
+
+		log.Printf("Targeting: %v", d6.RemoteIPPort)
+		err = d6.Detect()
+		showResult(d6, err)
 
 		if n == 1 {
 			break
