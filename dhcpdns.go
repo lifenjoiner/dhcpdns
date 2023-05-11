@@ -2,7 +2,7 @@
 // Use of this source code is governed by a MIT license
 // that can be found in the LICENSE file.
 
-// The package gets the DHCP/DHCPv6 DNS.
+// Package dhcpdns gets the DHCP/DHCPv6 DNS.
 package dhcpdns
 
 import (
@@ -16,13 +16,13 @@ import (
 )
 
 const (
-	MaxDhcpv4MessageSize  = 576
-	CommDhcpv6MessageSize = 1024
+	maxDhcpv4MessageSize  = 576
+	commDhcpv6MessageSize = 1024
 )
 
 // Sample messages, https://wiki.wireshark.org/SampleCaptures.md
 
-// Get DNS from a DHCP reply message.
+// GetDNSFromReply4 gets DNS from a DHCP reply message.
 func GetDNSFromReply4(msg []byte, tid []byte) (ip []net.IP, err error) {
 	n := len(msg)
 
@@ -77,7 +77,7 @@ func GetDNSFromReply4(msg []byte, tid []byte) (ip []net.IP, err error) {
 	return
 }
 
-// Send DHCP message and return the DNS.
+// GetDNSByIPv4 sends DHCP message and return the DNS.
 func GetDNSByIPv4(ip string) (dns []net.IP, err error) {
 	ipAddr, ifi, err := getOutboundParams(ip)
 	if err != nil {
@@ -179,7 +179,7 @@ func GetDNSByIPv4(ip string) (dns []net.IP, err error) {
 
 	//log.Printf("Receiving addr: %v", pc.LocalAddr())
 
-	buf := make([]byte, MaxDhcpv4MessageSize)
+	buf := make([]byte, maxDhcpv4MessageSize)
 	_ = pc.SetDeadline(time.Now().Add(2 * time.Second))
 	n, _, err := pc.ReadFrom(buf[:])
 	_ = pc.Close()
@@ -249,7 +249,7 @@ func readBigEndianUint16(b []byte) uint16 {
 	return uint16(b[0])<<8&0xff00 | uint16(b[1])
 }
 
-// Get DNS from a DHCPv6 REPLY message.
+// GetDNSFromReply6 gets DNS from a DHCPv6 REPLY message.
 // https://datatracker.ietf.org/doc/html/rfc3646
 func GetDNSFromReply6(msg []byte, tid []byte) (ip []net.IP, err error) {
 	n := len(msg)
@@ -297,7 +297,7 @@ func GetDNSFromReply6(msg []byte, tid []byte) (ip []net.IP, err error) {
 	return
 }
 
-// Send DHCPv6 INFORMATION-REQUEST message and return the DNS.
+// GetDNSByIPv6 sends DHCPv6 INFORMATION-REQUEST message and return the DNS.
 func GetDNSByIPv6(ip string) (dns []net.IP, err error) {
 	ipAddr, _, err := getOutboundParams(ip)
 	if err != nil {
@@ -344,7 +344,7 @@ func GetDNSByIPv6(ip string) (dns []net.IP, err error) {
 		return nil, err
 	}
 
-	buf := make([]byte, CommDhcpv6MessageSize)
+	buf := make([]byte, commDhcpv6MessageSize)
 	_ = pc.SetDeadline(time.Now().Add(2 * time.Second))
 	n, _, err := pc.ReadFrom(buf[:])
 	_ = pc.Close()
@@ -357,6 +357,7 @@ func GetDNSByIPv6(ip string) (dns []net.IP, err error) {
 	return
 }
 
+// Detector holds the parameters and results.
 type Detector struct {
 	sync.RWMutex
 	RemoteIPPort string
@@ -381,7 +382,7 @@ func (d *Detector) Detect() error {
 
 	// https://en.wikipedia.org/wiki/Teredo_tunneling#IPv6_addressing
 	if ip[:6] == "2001::" {
-		return errors.New("Teredo Tunneling Pseudo-Interface")
+		return errors.New("unsupported Teredo Tunneling Pseudo-Interface")
 	}
 
 	if d.LastActiveIP != ip {
@@ -401,7 +402,7 @@ func (d *Detector) Detect() error {
 	return err
 }
 
-// Get the detected DNS.
+// DNS gets the detected DNS.
 func (d *Detector) DNS() []net.IP {
 	d.RLock()
 	dns := d.dns

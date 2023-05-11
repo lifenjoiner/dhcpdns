@@ -15,7 +15,7 @@ import (
 
 func showResult(d *dhcpdns.Detector, err error) {
 	if err != nil {
-		log.Printf("error: %v", err)
+		log.Printf("Error: %v", err)
 		log.Print("Keep the last good results")
 	} else {
 		log.Printf("Active local IP: %v", d.LastActiveIP)
