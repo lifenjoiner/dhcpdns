@@ -373,6 +373,11 @@ func (d *Detector) Detect() error {
 		return err
 	}
 
+	// https://en.wikipedia.org/wiki/Teredo_tunneling#IPv6_addressing
+	if ip[:6] == "2001::" {
+		return errors.New("Teredo Tunneling Pseudo-Interface")
+	}
+
 	if d.LastActiveIP != ip {
 		var dns []net.IP
 		if ipPort[0] == '[' {
