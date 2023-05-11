@@ -29,17 +29,19 @@ func showResult(d *dhcpdns.Detector, err error) {
 func main() {
 	var (
 		n   int
+		k   int
 		err error
 	)
 
 	flag.IntVar(&n, "n", -1, "Detecting rounds")
+	flag.IntVar(&k, "k", 9, "Keep rounds for the same active IP")
 	flag.Parse()
 
 	d4 := &dhcpdns.Detector{RemoteIPPort: "8.8.8.8:80"}
 	d6 := &dhcpdns.Detector{RemoteIPPort: "[2001:4860:4860::8888]:80"}
 
 	for ; n != 0; n-- {
-		if n%9 == 0 {
+		if n%k == 0 {
 			d4.LastActiveIP = ""
 			d6.LastActiveIP = ""
 		}

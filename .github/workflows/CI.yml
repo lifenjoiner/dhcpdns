@@ -20,11 +20,11 @@ jobs:
 
     - name: Test Windows
       if: runner.os == 'Windows'
-      run: ./cli/cli -n 90
+      run: ./cli/cli -k 3 -n 30
 
     - name: Test Non-Windows
       if: runner.os != 'Windows'
-      run: sudo ./cli/cli -n 90
+      run: sudo ./cli/cli -k 3 -n 30
 
     - name: Upload
       uses: actions/upload-artifact@v3
