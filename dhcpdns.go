@@ -229,6 +229,10 @@ func getOutboundParams(ip string) (*net.IPAddr, *net.Interface, error) {
 		if got {
 			// https://www.kernel.org/doc/html/latest/networking/operstates.html
 			if ifi.Flags&net.FlagRunning == net.FlagRunning {
+				if is6 && ipUnicast.Equal(ipAddr.IP) {
+					// Only detect valid network.
+					return nil, nil, errors.New("no valid IPv6")
+				}
 				if ipUnicast != nil {
 					ipAddr.IP = ipUnicast
 				}
@@ -302,10 +306,6 @@ func GetDNSByIPv6(ip string) (dns []net.IP, err error) {
 	ipAddr, _, err := getOutboundParams(ip)
 	if err != nil {
 		return nil, err
-	}
-
-	if ipAddr.String() == ip {
-		return nil, errors.New("no valid IPv6")
 	}
 
 	pc, err := reuseListenPacket("udp6", "["+ipAddr.String()+"]:546")
