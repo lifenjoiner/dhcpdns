@@ -8,43 +8,54 @@ package main
 import (
 	"flag"
 	"log"
-	"net"
 	"time"
 
 	"github.com/lifenjoiner/dhcpdns"
 )
 
-func showResult(dns []net.IP, err error) {
+func showResult(d *dhcpdns.Detector, err error) {
 	if err != nil {
 		log.Printf("error: %v", err)
 		return
 	}
 
-	for _, dnsi := range dns {
+	log.Printf("Active local IP: %v", d.LastActiveIP)
+
+	for _, dnsi := range d.DNS {
 		log.Printf("DHCP DNS: %v", dnsi.String())
 	}
 }
 
 func main() {
-	var addr string
-	var n int
+	var (
+		n   int
+		err error
+	)
 
 	flag.IntVar(&n, "n", -1, "Detecting rounds")
 	flag.Parse()
 
-	for ; n != 0; n-- {
-		addr = "[2001:4860:4860::8888]:80"
-		log.Printf("Targeting: %v", addr)
-		showResult(dhcpdns.Detect6(addr))
+	d4 := &dhcpdns.Detector{RemoteIPPort: "8.8.8.8:80"}
+	d6 := &dhcpdns.Detector{RemoteIPPort: "[2001:4860:4860::8888]:80"}
 
-		addr = "8.8.8.8:80"
-		log.Printf("Targeting: %v", addr)
-		showResult(dhcpdns.Detect4(addr))
+	for ; n != 0; n-- {
+		if n%9 == 0 {
+			d4.LastActiveIP = ""
+			d6.LastActiveIP = ""
+		}
+
+		log.Printf("Targeting: %v", d6.RemoteIPPort)
+		err = d6.Detect()
+		showResult(d6, err)
+
+		log.Printf("Targeting: %v", d4.RemoteIPPort)
+		err = d4.Detect()
+		showResult(d4, err)
 
 		if n == 1 {
 			break
 		}
 
-		time.Sleep(30 * time.Second)
+		time.Sleep(10 * time.Second)
 	}
 }

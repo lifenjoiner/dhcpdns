@@ -352,31 +352,38 @@ func GetDNSByIPv6(ip string) (dns []net.IP, err error) {
 	return
 }
 
-func detect(raddr string, fn func(string) ([]net.IP, error)) ([]net.IP, error) {
-	c, err := net.Dial("udp", raddr)
+type Detector struct {
+	RemoteIPPort string
+	LastActiveIP string
+	DNS          []net.IP
+}
+
+// Detect the DNS from the active interface which is adopted to connect to the provided IPPort address.
+// The last active IP is used to reduce traffic or defense. Overwriting it can trigger a force detecting.
+func (d *Detector) Detect() error {
+	c, err := net.Dial("udp", d.RemoteIPPort)
 	if err != nil {
-		return nil, err
+		return err
 	}
+	ipPort := c.LocalAddr().String()
 	_ = c.Close()
 
-	ip, _, err := net.SplitHostPort(c.LocalAddr().String())
+	ip, _, err := net.SplitHostPort(ipPort)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	//log.Printf("Active local IP: %v", ip)
-
-	return fn(ip)
-}
-
-// Detect the IPv4 DNS from the active interface which is adopted
-// to connect to the provided IpPort address.
-func Detect4(raddr string) ([]net.IP, error) {
-	return detect(raddr, GetDNSByIPv4)
-}
-
-// Detect the IPv6 DNS from the active interface which is adopted
-// to connect to the provided IpPort address.
-func Detect6(raddr string) ([]net.IP, error) {
-	return detect(raddr, GetDNSByIPv6)
+	if d.LastActiveIP != ip {
+		var dns []net.IP
+		if ipPort[0] == '[' {
+			dns, err = GetDNSByIPv6(ip)
+		} else {
+			dns, err = GetDNSByIPv4(ip)
+		}
+		if err == nil {
+			d.LastActiveIP = ip
+			d.DNS = dns
+		}
+	}
+	return err
 }
