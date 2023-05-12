@@ -381,7 +381,7 @@ func (d *Detector) Detect() error {
 	}
 
 	// https://en.wikipedia.org/wiki/Teredo_tunneling#IPv6_addressing
-	if ip[:6] == "2001::" {
+	if ip[:7] == "2001:0:" {
 		return errors.New("unsupported Teredo Tunneling Pseudo-Interface")
 	}
 
