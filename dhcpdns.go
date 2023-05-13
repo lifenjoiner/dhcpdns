@@ -392,11 +392,11 @@ func (d *Detector) Detect() error {
 		} else {
 			dns, err = GetDNSByIPv4(ip)
 		}
+		d.Lock()
+		d.LastActiveIP = ip
 		if err == nil {
-			d.LastActiveIP = ip
-			d.Lock()
 			d.dns = dns
-			d.Unlock()
+		d.Unlock()
 		}
 	}
 	return err
