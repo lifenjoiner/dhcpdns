@@ -13,25 +13,35 @@ import (
 	"github.com/lifenjoiner/dhcpdns"
 )
 
-func showResult(d *dhcpdns.Detector, err error) {
+func detect(d *dhcpdns.Detector) {
+	log.Printf("Targeting: %v", d.RemoteIPPort)
+	_ = d.Detect()
+
+	n, ip, DNS, err := d.Status()
+
+	log.Printf("Constancy: %v", n)
 	if err != nil {
 		log.Printf("Error: %v", err)
-		log.Print("Keep the last good results")
-	} else {
-		log.Printf("Active local IP: %v", d.LastActiveIP)
+		if ip != "" {
+			if n > 9 {
+				log.Print("Seems can't get DHCP DNS")
+				return
+			} else {
+				log.Print("Maybe DHCP temporarily failed, keep the last results")
+			}
+		}
 	}
+	log.Printf("Active local IP: %v", ip)
 
-	for _, dnsi := range d.DNS() {
+	for _, dnsi := range DNS {
 		log.Printf("DHCP DNS: %v", dnsi.String())
 	}
 }
 
+// `Serve` acts like a daemon.
+
 func main() {
-	var (
-		n   int
-		k   int
-		err error
-	)
+	var n, k int
 
 	flag.IntVar(&n, "n", -1, "Detecting rounds")
 	flag.IntVar(&k, "k", 9, "Keep rounds for the same active IP")
@@ -42,17 +52,12 @@ func main() {
 
 	for ; n != 0; n-- {
 		if n%k == 0 {
-			d4.LastActiveIP = ""
-			d6.LastActiveIP = ""
+			d4.SetNewRound()
+			d6.SetNewRound()
 		}
 
-		log.Printf("Targeting: %v", d4.RemoteIPPort)
-		err = d4.Detect()
-		showResult(d4, err)
-
-		log.Printf("Targeting: %v", d6.RemoteIPPort)
-		err = d6.Detect()
-		showResult(d6, err)
+		detect(d4)
+		detect(d6)
 
 		if n == 1 {
 			break

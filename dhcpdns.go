@@ -16,8 +16,32 @@ import (
 )
 
 const (
-	maxDhcpv4MessageSize  = 576
-	commDhcpv6MessageSize = 1024
+	dhcpv4MessageSizeMax  = 576
+	dhcpv6MessageSizeComm = 1024
+)
+
+var (
+	err4InvalidParam = errors.New("invalid DHCPv4 parameters")
+	err4NotReply     = errors.New("not DHCPv4 reply")
+	err4TidNotMatch  = errors.New("DHCPv4 TID not match")
+)
+
+var (
+	errInvalidReply = errors.New("invalid reply")
+	errNoDNSFound   = errors.New("no DNS found")
+)
+
+var (
+	err6InterfaceNotRunning = errors.New("interface is not running")
+	err6InvalidParam        = errors.New("invalid DHCPv6 parameters")
+	err6NoLLUAFound         = errors.New("no link-local address found")
+	err6NotReply            = errors.New("not DHCPv6 Reply")
+	err6TidNotMatch         = errors.New("DHCPv6 TID not match")
+)
+
+var (
+	errIsLLA    = errors.New("unsupported link-local address")
+	errIsTeredo = errors.New("unsupported Teredo Tunneling Pseudo-Interface")
 )
 
 // Sample messages, https://wiki.wireshark.org/SampleCaptures.md
@@ -27,17 +51,17 @@ func GetDNSFromReply4(msg []byte, tid []byte) (ip []net.IP, err error) {
 	n := len(msg)
 
 	if n < 241 || len(tid) < 4 {
-		err = errors.New("invalid DHCPv4 parameters")
+		err = err4InvalidParam
 		return
 	}
 
 	if msg[0] != 0x02 {
-		err = errors.New("not DHCPv4 reply")
+		err = err4NotReply
 		return
 	}
 
 	if msg[4] != tid[0] || msg[5] != tid[1] || msg[6] != tid[2] || msg[7] != tid[3] {
-		err = errors.New("DHCPv4 TID not match")
+		err = err4TidNotMatch
 		return
 	}
 
@@ -66,18 +90,19 @@ func GetDNSFromReply4(msg []byte, tid []byte) (ip []net.IP, err error) {
 			}
 		}
 
-		err = errors.New("invalid reply")
+		err = errInvalidReply
 		break
 	}
 
 	if len(ip) == 0 {
-		err = errors.New("no DNS found")
+		err = errNoDNSFound
 		//log.Printf("%x", msg)
 	}
 	return
 }
 
 // GetDNSByIPv4 sends DHCP message and return the DNS.
+// ip is the reaching out IP.
 func GetDNSByIPv4(ip string) (dns []net.IP, err error) {
 	ipAddr, ifi, err := getOutboundParams(ip)
 	if err != nil {
@@ -179,7 +204,7 @@ func GetDNSByIPv4(ip string) (dns []net.IP, err error) {
 
 	//log.Printf("Receiving addr: %v", pc.LocalAddr())
 
-	buf := make([]byte, maxDhcpv4MessageSize)
+	buf := make([]byte, dhcpv4MessageSizeMax)
 	_ = pc.SetDeadline(time.Now().Add(2 * time.Second))
 	n, _, err := pc.ReadFrom(buf[:])
 	_ = pc.Close()
@@ -229,24 +254,20 @@ func getOutboundParams(ip string) (*net.IPAddr, *net.Interface, error) {
 		if got {
 			// https://www.kernel.org/doc/html/latest/networking/operstates.html
 			if ifi.Flags&net.FlagRunning == net.FlagRunning {
-				if is6 && ipUnicast.Equal(ipAddr.IP) {
-					// Only detect valid network.
-					return nil, nil, errors.New("no valid IPv6")
-				}
 				if ipUnicast != nil {
 					ipAddr.IP = ipUnicast
 				}
-				// Bind fe80::/10 and ListenUDP on *nix needs Zone.
+				// Bind fe80::/10 and ListenUDP needs Zone on *nix.
 				if ipAddr.Zone == "" && runtime.GOOS != "windows" {
 					ipAddr.Zone = ifi.Name
 				}
 				return ipAddr, &ifi, nil
 			}
-			return nil, nil, errors.New("[" + ifi.Name + "] is not running")
+			return nil, nil, err6InterfaceNotRunning
 		}
 	}
 
-	return nil, nil, errors.New("no link-local unicast address found")
+	return nil, nil, err6NoLLUAFound
 }
 
 func readBigEndianUint16(b []byte) uint16 {
@@ -259,17 +280,17 @@ func GetDNSFromReply6(msg []byte, tid []byte) (ip []net.IP, err error) {
 	n := len(msg)
 
 	if n < 7 || len(tid) < 3 {
-		err = errors.New("invalid DHCPv6 parameters")
+		err = err6InvalidParam
 		return
 	}
 
 	if msg[0] != 0x07 {
-		err = errors.New("not DHCPv6 Reply")
+		err = err6NotReply
 		return
 	}
 
 	if msg[1] != tid[0] || msg[2] != tid[1] || msg[3] != tid[2] {
-		err = errors.New("DHCPv6 TID not match")
+		err = err6TidNotMatch
 		return
 	}
 
@@ -292,16 +313,17 @@ func GetDNSFromReply6(msg []byte, tid []byte) (ip []net.IP, err error) {
 				continue
 			}
 		}
-		err = errors.New("invalid REPLY")
+		err = errInvalidReply
 		break
 	}
 	if len(ip) == 0 {
-		err = errors.New("no DNS found")
+		err = errNoDNSFound
 	}
 	return
 }
 
 // GetDNSByIPv6 sends DHCPv6 INFORMATION-REQUEST message and return the DNS.
+// ip is the reaching out IP.
 func GetDNSByIPv6(ip string) (dns []net.IP, err error) {
 	ipAddr, _, err := getOutboundParams(ip)
 	if err != nil {
@@ -344,7 +366,7 @@ func GetDNSByIPv6(ip string) (dns []net.IP, err error) {
 		return nil, err
 	}
 
-	buf := make([]byte, commDhcpv6MessageSize)
+	buf := make([]byte, dhcpv6MessageSizeComm)
 	_ = pc.SetDeadline(time.Now().Add(2 * time.Second))
 	n, _, err := pc.ReadFrom(buf[:])
 	_ = pc.Close()
@@ -358,54 +380,124 @@ func GetDNSByIPv6(ip string) (dns []net.IP, err error) {
 }
 
 // Detector holds the parameters and results.
+//
+//	if err == nil {
+//		if lastActiveIP != "" {
+//			// got DNS
+//		} else {
+//			// uninitialized
+//		}
+//	} else if lastActiveIP == "" {
+//		// offline/invalid
+//	} else if constancy > x {
+//		// treat as (switched to a network that) can't get DNS
+//	} else {
+//		// treat as temporarily failed
+//	}
 type Detector struct {
 	sync.RWMutex
+	got bool
+	// RemoteIPPort is the remote IPPort to detect within UDP.
 	RemoteIPPort string
-	LastActiveIP string
+	lastActiveIP string
 	dns          []net.IP
+	err          error
+	constancy    int
 }
 
-// Detect the DNS from the active interface which is adopted to connect to the provided IPPort address.
-// The last active IP is used to reduce traffic or defense. Overwriting it can trigger a force detecting.
-func (d *Detector) Detect() error {
+func detect(d *Detector) (string, []net.IP, error) {
 	c, err := net.Dial("udp", d.RemoteIPPort)
 	if err != nil {
-		return err
+		return "", nil, err
 	}
 	ipPort := c.LocalAddr().String()
 	_ = c.Close()
 
 	ip, _, err := net.SplitHostPort(ipPort)
 	if err != nil {
-		return err
+		return "", nil, err
 	}
 
-	// https://en.wikipedia.org/wiki/Teredo_tunneling#IPv6_addressing
 	if ip[:7] == "2001:0:" {
-		return errors.New("unsupported Teredo Tunneling Pseudo-Interface")
+		// https://en.wikipedia.org/wiki/Teredo_tunneling#IPv6_addressing
+		err = errIsTeredo
+	} else if ip[:6] == "fe80::" || ip[:7] == "169.254" {
+		// Only detect valid network. https://www.wikiwand.com/en/Link-local_address
+		err = errIsLLA
 	}
 
-	if d.LastActiveIP != ip {
-		var dns []net.IP
+	var dns []net.IP
+	if err == nil && (!d.got || d.lastActiveIP != ip) {
 		if ipPort[0] == '[' {
 			dns, err = GetDNSByIPv6(ip)
 		} else {
 			dns, err = GetDNSByIPv4(ip)
 		}
-		d.Lock()
-		d.LastActiveIP = ip
-		if err == nil {
-			d.dns = dns
-		d.Unlock()
-		}
 	}
+	return ip, dns, err
+}
+
+// Detect the DNS from the active interface which is adopted to connect to the provided IPPort address.
+// The last active IP is used to reduce traffic or defense.
+// If got and IP hasn't changed, skip sending DHCP messages as soft detecting.
+func (d *Detector) Detect() error {
+	ip, dns, err := detect(d)
+	d.Lock()
+	d.lastActiveIP = ip
+	if err == nil {
+		if len(dns) > 0 {
+			d.dns = dns
+		}
+		d.got = true
+	}
+	if d.lastActiveIP == ip && isTheSameErr(err, d.err) {
+		d.constancy++
+	} else {
+		d.constancy = 1
+	}
+	d.err = err
+	d.Unlock()
 	return err
 }
 
-// DNS gets the detected DNS.
-func (d *Detector) DNS() []net.IP {
+// SetNewRound sets a new force detecting.
+func (d *Detector) SetNewRound() {
+	d.Lock()
+	d.got = false
+	d.Unlock()
+}
+
+// Status gets the detected results.
+func (d *Detector) Status() (constancy int, ip string, dns []net.IP, err error) {
 	d.RLock()
-	dns := d.dns
+	constancy = d.constancy
+	ip = d.lastActiveIP
+	dns = d.dns
+	err = d.err
 	d.RUnlock()
-	return dns
+	return
+}
+
+// Serve periodically detects the DNS as a daemon.
+// cycle is the soft detecting rounds following a force detecting. sleep is in seconds.
+func (d *Detector) Serve(cycle, sleep int) {
+	var i int
+	if cycle <= 0 {
+		cycle = 9
+	}
+	if sleep <= 0 {
+		sleep = 10
+	}
+	for {
+		if i%cycle == 0 {
+			d.SetNewRound()
+		}
+		_ = d.Detect()
+		i++
+		time.Sleep(time.Duration(sleep) * time.Second)
+	}
+}
+
+func isTheSameErr(err1, err2 error) bool {
+	return err1 == err2 || (err1 != nil && err2 != nil && err1.Error() == err2.Error())
 }
