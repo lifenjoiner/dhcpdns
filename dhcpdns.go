@@ -443,7 +443,6 @@ func detect(d *Detector) (string, []net.IP, error) {
 func (d *Detector) Detect() error {
 	ip, dns, err := detect(d)
 	d.Lock()
-	d.lastActiveIP = ip
 	if err == nil {
 		if len(dns) > 0 {
 			d.dns = dns
@@ -455,6 +454,7 @@ func (d *Detector) Detect() error {
 	} else {
 		d.constancy = 1
 	}
+	d.lastActiveIP = ip
 	d.err = err
 	d.Unlock()
 	return err
