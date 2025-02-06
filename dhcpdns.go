@@ -241,7 +241,11 @@ func getOutboundParams(ip string) (*net.IPAddr, *net.Interface, error) {
 		var ipUnicast net.IP
 		var got bool
 		for _, addr := range addrs {
-			ipi := addr.(*net.IPNet).IP
+			ipa, ok := addr.(*net.IPNet)
+			if !ok {
+				continue
+			}
+			ipi := ipa.IP
 			if ipi.Equal(ipAddr.IP) {
 				got = true
 			}
