@@ -7,6 +7,7 @@ jobs:
     name: dhcpdns-${{matrix.os}}
     runs-on: ${{matrix.os}} # run native test
     strategy:
+      fail-fast: false
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
 
