@@ -5,6 +5,9 @@ pushd %~dp0
 ::-code-::
 call :Build windows amd64
 call :Build linux amd64
+::Android
+call :Build linux arm64
+::Mac
 call :Build darwin amd64
 call :Build freebsd amd64
 call :Build solaris amd64
