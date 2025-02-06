@@ -402,6 +402,7 @@ type Detector struct {
 	sync.RWMutex
 	got bool
 	// RemoteIPPort is the remote IPPort to detect within UDP.
+	// Won't send any data to it. `Dial` in UDP only detects if the network is available.
 	RemoteIPPort string
 	lastActiveIP string
 	dns          []net.IP
