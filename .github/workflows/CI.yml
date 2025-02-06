@@ -11,7 +11,7 @@ jobs:
         os: [ubuntu-latest, windows-latest, macos-latest]
 
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
 
     - name: Build
       run: |
@@ -27,7 +27,7 @@ jobs:
       run: sudo ./cli/cli -k 3 -n 30
 
     - name: Upload
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: dhcpdns-${{github.head_ref || github.ref_name}}-${{matrix.os}}
         path: cli/cli*
