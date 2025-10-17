@@ -110,8 +110,16 @@ func GetDNSByIPv4(ip string) (dns []net.IP, err error) {
 	}
 	//log.Printf("Receiving addr Zone: %v", ipAddr.Zone)
 
-	// Windows (WSL2) can't choose the right IP.
-	pc, err := reuseListenPacket("udp4", ip+":68")
+	var listenAddress string
+	switch runtime.GOOS {
+	case "windows":
+		listenAddress = ip + ":68"
+	case "linux", "android":
+		listenAddress = "255.255.255.255:68"
+	default:
+		listenAddress = "0.0.0.0:68"
+	}
+	pc, err := reuseListenPacket("udp4", listenAddress)
 	if err != nil {
 		return nil, err
 	}
@@ -119,8 +127,10 @@ func GetDNSByIPv4(ip string) (dns []net.IP, err error) {
 	// Minimal DHCP message
 	// We prefer to be reached by a broadcast than unicast relpy, in case of there is the OS DHCP deamon binding.
 	// https://en.wikipedia.org/wiki/Dynamic_Host_Configuration_Protocol
-	// https://datatracker.ietf.org/doc/html/rfc2132#section-9.6
 	// INIT-REBOOT: https://datatracker.ietf.org/doc/html/rfc2131#section-4.3.2
+	// https://datatracker.ietf.org/doc/html/rfc2131#section-4.4.1
+	// https://datatracker.ietf.org/doc/html/rfc2132#section-9.6
+	// DHCPINFORM and RENEWING work on less devices.
 	dhcpMsg := []byte{
 		0x01,                   // message type
 		0x01,                   // hardware type: Ethernet
@@ -133,7 +143,7 @@ func GetDNSByIPv4(ip string) (dns []net.IP, err error) {
 		0x00, 0x00, 0x00, 0x00, // your ip: yiaddr
 		0x00, 0x00, 0x00, 0x00, // server ip: siaddr
 		0x00, 0x00, 0x00, 0x00, // relay ip: giaddr
-		// client MAC: https://gitlab.com/wireshark/wireshark/-/raw/master/manuf
+		// chaddr, client MAC: https://gitlab.com/wireshark/wireshark/-/raw/master/manuf
 		0x06, 0x05, 0x04, 0x03, 0x02, 0x01,
 		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // client hardware address padding
 		// ServerHostName
@@ -158,10 +168,8 @@ func GetDNSByIPv4(ip string) (dns []net.IP, err error) {
 		0x37, 0x01, 0x06, // Parameter Request List: DNS
 		0x3d, 0x07, 0x01, 0x06, 0x05, 0x04, 0x03, 0x02, 0x01, // Client Identifier
 		0xff, // END
-		// padding: min length of 300 bytes per RFC951
-		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+		// padding to the same size as chaddr
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 	}
 
 	// new transaction id
@@ -188,18 +196,6 @@ func GetDNSByIPv4(ip string) (dns []net.IP, err error) {
 		// defer doesn't work on reassignment
 		_ = pc.Close()
 		return nil, err
-	}
-
-	// Prefer broadcast:
-	// (*nix) may have a deamon binding the local IPPort and the gateway IPPort.
-	// If so and the server replies with a broadcast to the local IPPort, rather than IPv4bcast,
-	// it may not be received on some OS.
-	if ipAddr.Zone != "" {
-		_ = pc.Close()
-		pc, err = reuseListenPacket("udp4", ":68")
-		if err != nil {
-			return nil, err
-		}
 	}
 
 	//log.Printf("Receiving addr: %v", pc.LocalAddr())
