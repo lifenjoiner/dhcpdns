@@ -33,6 +33,7 @@ jobs:
 
     - name: Upload
       uses: actions/upload-artifact@v4
+      if: ${{success()}} || ${{failure()}}
       with:
         name: dhcpdns-${{github.head_ref || github.ref_name}}-${{matrix.os}}
         path: cli/cli*
