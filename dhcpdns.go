@@ -110,8 +110,16 @@ func GetDNSByIPv4(ip string) (dns []net.IP, err error) {
 	}
 	//log.Printf("Receiving addr Zone: %v", ipAddr.Zone)
 
-	// Windows (WSL2) can't choose the right IP.
-	pc, err := reuseListenPacket("udp4", ip+":68")
+	var listenAddress string
+	switch runtime.GOOS {
+	case "windows":
+		listenAddress = ip + ":68"
+	case "linux", "android":
+		listenAddress = "255.255.255.255:68"
+	default:
+		listenAddress = "0.0.0.0:68"
+	}
+	pc, err := reuseListenPacket("udp4", listenAddress)
 	if err != nil {
 		return nil, err
 	}
@@ -188,18 +196,6 @@ func GetDNSByIPv4(ip string) (dns []net.IP, err error) {
 		// defer doesn't work on reassignment
 		_ = pc.Close()
 		return nil, err
-	}
-
-	// Prefer broadcast:
-	// (*nix) may have a deamon binding the local IPPort and the gateway IPPort.
-	// If so and the server replies with a broadcast to the local IPPort, rather than IPv4bcast,
-	// it may not be received on some OS.
-	if ipAddr.Zone != "" {
-		_ = pc.Close()
-		pc, err = reuseListenPacket("udp4", ":68")
-		if err != nil {
-			return nil, err
-		}
 	}
 
 	//log.Printf("Receiving addr: %v", pc.LocalAddr())
