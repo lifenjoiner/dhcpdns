@@ -124,18 +124,20 @@ func GetDNSByIPv4(ip string) (dns []net.IP, err error) {
 		return nil, err
 	}
 
-	// Minimal DHCP message
+	// Minimal DHCP message for REBINDING state DHCPREQUEST
 	// We prefer to be reached by a broadcast than unicast relpy, in case of there is the OS DHCP deamon binding.
 	// https://en.wikipedia.org/wiki/Dynamic_Host_Configuration_Protocol
+	// https://datatracker.ietf.org/doc/html/rfc2131#section-4.4.1
+	// REBINDING: https://datatracker.ietf.org/doc/html/rfc2131#section-4.3.2
 	// https://datatracker.ietf.org/doc/html/rfc2132#section-9.6
-	// INIT-REBOOT: https://datatracker.ietf.org/doc/html/rfc2131#section-4.3.2
+	// dnsmasq/rfc2131.c, dhcp_reply()
 	dhcpMsg := []byte{
 		0x01,                   // message type
 		0x01,                   // hardware type: Ethernet
 		0x06,                   // hardware address length: Ethernet
 		0x00,                   // hops
 		0x48, 0x59, 0x58, 0x27, // transaction id
-		0x00, 0x00, // seconds elasped
+		0x00, 0xec, // seconds elasped
 		0x80, 0x00, // flags: BROADCAST. Unicast may not be received.
 		0x00, 0x00, 0x00, 0x00, // client ip: ciaddr
 		0x00, 0x00, 0x00, 0x00, // your ip: yiaddr
@@ -162,31 +164,31 @@ func GetDNSByIPv4(ip string) (dns []net.IP, err error) {
 		0x63, 0x82, 0x53, 0x63, // 240B
 		// Options
 		0x35, 0x01, 0x03, // DHCPREQUEST. DHCPDISCOVER may cause the server to release the OFFER.
-		0x32, 0x04, 0xc0, 0xa8, 0x01, 0x04, // Requested IP address for `INIT-REBOOT`
+		// 0x32, 0x04, 0xc0, 0xa8, 0x01, 0x04, // Requested IP address for `INIT-REBOOT`
 		0x37, 0x01, 0x06, // Parameter Request List: DNS
 		0x3d, 0x07, 0x01, 0x06, 0x05, 0x04, 0x03, 0x02, 0x01, // Client Identifier
 		0xff, // END
 		// padding: min length of 300 bytes per RFC951
 		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+		// 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+		// 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 	}
 
 	// new transaction id
 	tid := dhcpMsg[4:8]
 	_, _ = rand.Read(tid)
 
+	// ciaddr
+	copy(dhcpMsg[12:12+4], ipAddr.IP.To4())
 	// MAC. On devices (Android) with both IPv6 and IPv6 available, MAC would be nil.
 	copy(dhcpMsg[28:28+16], ifi.HardwareAddr)
-	// Requested IP address
-	copy(dhcpMsg[245:245+4], ipAddr.IP.To4())
 	// The DHCP server of VMware NAT mode requires Client identifier.
 	m := len(ifi.HardwareAddr)
 	//log.Printf("MAC[%v]: %v", m, ifi.HardwareAddr)
 	if m > 0 {
-		copy(dhcpMsg[255:255+m], ifi.HardwareAddr)
-		dhcpMsg[253] = byte(m&0xff) + 1
-		dhcpMsg[255+m] = 0xff
+		copy(dhcpMsg[249:249+m], ifi.HardwareAddr)
+		dhcpMsg[247] = byte(m&0xff) + 1
+		dhcpMsg[249+m] = 0xff
 	}
 
 	rAddr := &net.UDPAddr{IP: net.IPv4bcast, Port: 67}
