@@ -112,7 +112,7 @@ func GetDNSByIPv4(ip string) (dns []net.IP, err error) {
 
 	var listenAddress string
 	switch runtime.GOOS {
-	case "windows":
+	case "windows", "darwin":
 		listenAddress = ip + ":68"
 	case "linux", "android":
 		listenAddress = "255.255.255.255:68"
